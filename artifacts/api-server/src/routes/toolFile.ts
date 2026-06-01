@@ -9,6 +9,7 @@ import { promisify } from "node:util";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import crypto from "node:crypto";
 
 const execFileAsync = promisify(execFile);
 
@@ -115,13 +116,67 @@ router.get("/tool/download", requireWorkerKey, async (req: Request, res: Respons
     }
     const { filename, mime_type, file_data, file_size } = result.rows[0];
 
-    logger.info({ filename, size: file_size }, "Tool downloaded by worker");
+    // Log download with worker info and client IP
+    const worker = (req as any).worker;
+    const clientIp =
+      (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+      req.socket.remoteAddress ||
+      "unknown";
+    logger.info(
+      { filename, size: file_size, worker: worker?.discordUsername, ip: clientIp },
+      "Tool downloaded by worker"
+    );
+
+    // Record the download event for rate-limit / audit tracking
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS tool_download_log (
+          id          SERIAL PRIMARY KEY,
+          worker_id   INTEGER,
+          worker_key  TEXT,
+          client_ip   TEXT,
+          filename    TEXT,
+          downloaded_at TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+      `);
+      await pool.query(
+        `INSERT INTO tool_download_log (worker_id, worker_key, client_ip, filename)
+         VALUES ($1, $2, $3, $4)`,
+        [worker?.id ?? null, worker?.workerKey ?? null, clientIp, filename]
+      );
+
+      // Rate-limit: max 5 downloads per worker per 10 minutes
+      const recent = await pool.query(
+        `SELECT COUNT(*) AS cnt FROM tool_download_log
+         WHERE worker_key = $1
+           AND downloaded_at > NOW() - INTERVAL '10 minutes'`,
+        [worker?.workerKey ?? ""]
+      );
+      const cnt = Number((recent.rows[0] as any)?.cnt ?? 0);
+      if (cnt > 5) {
+        res.status(429).json({ error: "Too many downloads. Please wait before trying again." });
+        return;
+      }
+    } catch (_logErr) {
+      // Never block a valid download because of a log failure
+    }
+
+    // HMAC-sign the payload using the worker's own key as the secret.
+    // The launcher verifies this signature before executing — prevents a
+    // man-in-the-middle from substituting a different payload.
+    const payloadBuf: Buffer = Buffer.isBuffer(file_data) ? file_data : Buffer.from(file_data);
+    const hmacSecret = worker?.workerKey ?? "unsigned";
+    const payloadHmac = crypto
+      .createHmac("sha256", hmacSecret)
+      .update(payloadBuf)
+      .digest("hex");
 
     res.setHeader("Content-Type", mime_type);
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.setHeader("Content-Length", file_size);
     res.setHeader("Cache-Control", "no-store");
-    res.send(file_data);
+    res.setHeader("X-Payload-HMAC", payloadHmac);
+    res.send(payloadBuf);
   } catch (err: any) {
     logger.error({ err }, "Tool download failed");
     res.status(500).json({ error: "Download failed", detail: err?.message });

@@ -12,6 +12,7 @@ import launcherRouter from "./launcher";
 import workerPortalRouter from "./workerPortal";
 import envSettingsRouter from "./envSettings";
 import adminAuthRouter from "./adminAuth";
+import workerEnvRouter from "./workerEnv";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(toolFileRouter);
 router.use(launcherRouter);
 router.use(workerPortalRouter);
 router.use(envSettingsRouter);
+router.use(workerEnvRouter);
 
 export default router;

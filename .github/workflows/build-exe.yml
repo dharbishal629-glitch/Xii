@@ -1,0 +1,38 @@
+name: Build EXE
+
+on:
+  workflow_dispatch:
+    inputs:
+      python_file:
+        description: "Python file to compile (relative to repo root)"
+        required: true
+        default: "main.py"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          pip install -r requirements.txt --ignore-requires-python || true
+
+      - name: Build EXE with PyInstaller
+        run: |
+          pyinstaller --onefile --noconfirm --clean "${{ github.event.inputs.python_file }}"
+
+      - name: Upload EXE as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tool-exe
+          path: dist/*.exe
+          retention-days: 7

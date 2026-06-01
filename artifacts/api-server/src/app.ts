@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Application, type Request, type Response } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "node:path";
@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
-const app: Express = express();
+const app: Application = express();
 
 app.use(
   pinoHttp({
@@ -57,7 +57,7 @@ if (publicDir) {
     express.static(publicDir, {
       index: false,
       maxAge: "1h",
-      setHeaders(res, filePath) {
+      setHeaders(res: import("http").ServerResponse, filePath: string) {
         // Hashed Vite asset files can be cached aggressively
         if (/\/assets\//.test(filePath)) {
           res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
@@ -68,13 +68,13 @@ if (publicDir) {
   // SPA catch-all: any non-API path returns index.html so React Router handles routing.
   // This fixes direct-URL access (e.g. /login, /worker) returning 404.
   // Express v5 + path-to-regexp v8 requires a RegExp for true wildcards.
-  app.get(/^\/(?!api\/)/, (req, res) => {
+  app.get(/^\/(?!api\/)/, (_req: Request, res: Response) => {
     res.sendFile(path.join(publicDir, "index.html"));
   });
 } else {
   logger.info("No dashboard build found — running in API-only mode");
   // Still provide a health response at root
-  app.get("/", (_req, res) => {
+  app.get("/", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "CTRL.PNL API", version: "2.0" });
   });
 }

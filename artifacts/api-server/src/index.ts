@@ -74,20 +74,20 @@ async function initDb() {
   }
 }
 
-const RENDER_URL = process.env.RENDER_API_URL || process.env.VITE_API_BASE_URL || "";
+const KEEPALIVE_URL = process.env.CTRL_API_URL || "";
 const PING_INTERVAL_MS = 14 * 60 * 1000;
 
 function startKeepAlive() {
-  if (!RENDER_URL) return;
+  if (!KEEPALIVE_URL) return;
   setInterval(async () => {
     try {
-      const res = await fetch(`${RENDER_URL}/api/health`, { signal: AbortSignal.timeout(10000) });
-      logger.info({ status: res.status }, "Keep-alive ping sent to Render");
+      const res = await fetch(`${KEEPALIVE_URL}/api/health`, { signal: AbortSignal.timeout(10000) });
+      logger.info({ status: res.status }, "Keep-alive ping sent");
     } catch (err: any) {
-      logger.warn({ err: err?.message }, "Keep-alive ping to Render failed");
+      logger.warn({ err: err?.message }, "Keep-alive ping failed");
     }
   }, PING_INTERVAL_MS);
-  logger.info({ url: RENDER_URL }, "Keep-alive pinger started for Render server");
+  logger.info({ url: KEEPALIVE_URL }, "Keep-alive pinger started");
 }
 
 initDb().then(() => {
