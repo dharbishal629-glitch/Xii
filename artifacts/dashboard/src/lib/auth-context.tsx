@@ -142,7 +142,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (res.status === 401) return { success: false, error: "Wrong 2FA code. Try again." };
       if (res.status === 403) return { success: false, error: "Wrong access code. Try again." };
-      if (!res.ok) return { success: false, error: `Server error (HTTP ${res.status}).` };
+      if (!res.ok) {
+          let errMsg = `Server error (HTTP ${res.status}).`;
+          try { const d = await res.json(); if (d?.error) errMsg = d.error; } catch {}
+          return { success: false, error: errMsg };
+        }
       setAdminKey(accessCode);
       setTotpCode(code);
       try { sessionStorage.setItem(SESSION_KEY, accessCode); } catch {}
