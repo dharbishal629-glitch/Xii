@@ -1,8 +1,4 @@
-// @ts-nocheck
-// NOTE: @ts-nocheck is intentional — @types/express v5 does not resolve
-// correctly under "moduleResolution": "bundler" (sendFile/json missing from
-// Response, RequestHandler contextual typing broken). Runtime is 100% correct.
-import express from "express";
+import express, { type Request, type Response } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "node:path";
@@ -62,13 +58,13 @@ if (publicDir) {
     }),
   );
 
-  app.get(/^\/(?!api\/)/, (_req, res) => {
+  app.get(/^\/(?!api\/)/, (_req: Request, res: Response) => {
     res.sendFile(path.join(publicDir, "index.html"));
   });
 } else {
   logger.info("No dashboard build found — running in API-only mode");
 
-  app.get("/", (_req, res) => {
+  app.get("/", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "CTRL.PNL API", version: "2.0" });
   });
 }
