@@ -1,8 +1,9 @@
-import express from "express";
+import express, { type Request, type Response } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "node:path";
 import fs from "node:fs";
+import http from "node:http";
 import { fileURLToPath } from "node:url";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -35,18 +36,14 @@ app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 // API routes
 app.use("/api", router);
 
-// ── Static dashboard hosting ─────────────────────────────────────────────────
-// When deployed, the dashboard's Vite build is served by Express so one
-// service hosts both the API and the UI. We try both possible locations:
-//   1. Bundled mode  → dist/public/   (after `node build.mjs`)
-//   2. Source mode   → ../../dashboard/dist/public/  (when running via tsx)
+// ── Static dashboard hosting ──────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
 const __dirnameLocal = path.dirname(__filename);
 
 const candidatePublicDirs = [
-  path.resolve(__dirnameLocal, "public"),                                // bundled
-  path.resolve(__dirnameLocal, "..", "dist", "public"),                  // bundled (from src/)
-  path.resolve(__dirnameLocal, "..", "..", "dashboard", "dist", "public"), // source (tsx mode)
+  path.resolve(__dirnameLocal, "public"),
+  path.resolve(__dirnameLocal, "..", "dist", "public"),
+  path.resolve(__dirnameLocal, "..", "..", "dashboard", "dist", "public"),
 ];
 
 const publicDir = candidatePublicDirs.find((p) => fs.existsSync(path.join(p, "index.html")));
@@ -57,20 +54,19 @@ if (publicDir) {
     express.static(publicDir, {
       index: false,
       maxAge: "1h",
-      setHeaders(res, filePath) {
+      setHeaders(res: http.ServerResponse, filePath: string) {
         if (/\/assets\//.test(filePath)) {
           res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
         }
       },
     }),
   );
-  // SPA catch-all: any non-API path returns index.html so React Router handles routing.
-  app.get(/^\/(?!api\/)/, (_req, res) => {
+  app.get(/^\/(?!api\/)/, (_req: Request, res: Response) => {
     res.sendFile(path.join(publicDir, "index.html"));
   });
 } else {
   logger.info("No dashboard build found — running in API-only mode");
-  app.get("/", (_req, res) => {
+  app.get("/", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "CTRL.PNL API", version: "2.0" });
   });
 }
