@@ -9,6 +9,10 @@
       "skipLibCheck": true,
       "isolatedModules": true,
       "noEmitOnError": false,
+      "typeRoots": [
+        "../artifacts/api-server/node_modules/@types",
+        "../node_modules/@types"
+      ],
       "types": ["node"]
     },
     "include": ["."]
