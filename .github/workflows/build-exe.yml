@@ -6,7 +6,7 @@ on:
       python_file:
         description: "Python file to compile (relative to repo root)"
         required: true
-        default: "main.py"
+        default: "launcher.py"
 
 jobs:
   build:
@@ -23,16 +23,16 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyinstaller
+          pip install pyinstaller requests colorama
           pip install -r requirements.txt --ignore-requires-python || true
 
       - name: Build EXE with PyInstaller
         run: |
-          pyinstaller --onefile --noconfirm --clean "${{ github.event.inputs.python_file }}"
+          pyinstaller --onefile --noconfirm --clean --name "CTRL-PNL-Launcher" "${{ github.event.inputs.python_file }}"
 
       - name: Upload EXE as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tool-exe
+          name: CTRL-PNL-Launcher
           path: dist/*.exe
-          retention-days: 7
+          retention-days: 14
