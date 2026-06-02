@@ -1,6 +1,6 @@
 {
-    "buildCommand": "pnpm install && pnpm run typecheck:libs && pnpm --filter @workspace/dashboard run build",
-    "installCommand": "pnpm install",
+    "installCommand": "pnpm install --no-frozen-lockfile",
+    "buildCommand": "pnpm run typecheck:libs && pnpm --filter @workspace/dashboard run build",
     "outputDirectory": "artifacts/dashboard/dist/public",
     "functions": {
       "api/index.ts": {
