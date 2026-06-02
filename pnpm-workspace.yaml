@@ -75,6 +75,9 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
+  # Force single instances of shared packages to prevent duplicate type conflicts
+  drizzle-orm: "^0.45.2"
+  zod: "^3.25.76"
   # replit uses linux-x64 only, we can exclude all other platforms
   "esbuild>@esbuild/darwin-arm64": "-"
   "esbuild>@esbuild/darwin-x64": "-"
