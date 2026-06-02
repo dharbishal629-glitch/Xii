@@ -1,4 +1,4 @@
-import express, { type Request, type Response } from "express";
+import express from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "node:path";
@@ -15,16 +15,10 @@ app.use(
     logger,
     serializers: {
       req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
+        return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
       },
       res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
+        return { statusCode: res.statusCode };
       },
     },
   }),
@@ -33,7 +27,6 @@ app.use(cors());
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
-// API routes
 app.use("/api", router);
 
 // ── Static dashboard hosting ──────────────────────────────────────────────────
@@ -46,10 +39,13 @@ const candidatePublicDirs = [
   path.resolve(__dirnameLocal, "..", "..", "dashboard", "dist", "public"),
 ];
 
-const publicDir = candidatePublicDirs.find((p) => fs.existsSync(path.join(p, "index.html")));
+const publicDir = candidatePublicDirs.find((p) =>
+  fs.existsSync(path.join(p, "index.html")),
+);
 
 if (publicDir) {
   logger.info({ publicDir }, "Serving dashboard static files");
+
   app.use(
     express.static(publicDir, {
       index: false,
@@ -61,14 +57,19 @@ if (publicDir) {
       },
     }),
   );
-  app.get(/^\/(?!api\/)/, (_req: Request, res: Response) => {
-    res.sendFile(path.join(publicDir, "index.html"));
-  });
+
+  // SPA catch-all — use RequestHandler so TypeScript infers the full res type
+  const spaHandler: express.RequestHandler = (_req, res) => {
+    res.sendFile(path.join(publicDir!, "index.html"));
+  };
+  app.get(/^\/(?!api\/)/, spaHandler);
 } else {
   logger.info("No dashboard build found — running in API-only mode");
-  app.get("/", (_req: Request, res: Response) => {
+
+  const healthHandler: express.RequestHandler = (_req, res) => {
     res.json({ status: "ok", service: "CTRL.PNL API", version: "2.0" });
-  });
+  };
+  app.get("/", healthHandler);
 }
 
 export default app;
